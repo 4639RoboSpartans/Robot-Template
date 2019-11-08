@@ -1,0 +1,57 @@
+import edu.wpi.first.gradlerio.GradleRIOPlugin
+
+plugins {
+    id "java"
+    id "edu.wpi.first.GradleRIO" version "2019.4.1"
+    id "com.diffplug.gradle.spotless" version "3.23.0"
+}
+
+def ROBOT_MAIN_CLASS = "frc.robot.Main"
+
+deploy {
+    targets {
+        roboRIO("roborio") {
+            team = frc.getTeamNumber()
+        }
+    }
+    artifacts {
+        frcJavaArtifact('frcJava') {
+            targets << "roborio"
+            debug = frc.getDebugOrDefault(false)
+        }
+        fileTreeArtifact('frcStaticFileDeploy') {
+            files = fileTree(dir: 'src/main/deploy')
+            targets << "roborio"
+            directory = '/home/lvuser/deploy'
+        }
+    }
+}
+
+def includeDesktopSupport = false
+
+repositories {
+    mavenCentral()
+}
+
+spotless {
+  java {
+    eclipse()
+    licenseHeaderFile 'file_header.txt'
+    importOrder 'java', 'edu.wpi', 'frc.robot', 'com.kauailabs', 'com.ctre', ''
+    removeUnusedImports()
+    trimTrailingWhitespace()
+    endWithNewline()
+  }
+}
+
+dependencies {
+    implementation wpi.deps.wpilib()
+    implementation wpi.deps.vendor.java()
+    nativeZip wpi.deps.vendor.jni(wpi.platforms.roborio)
+    nativeDesktopZip wpi.deps.vendor.jni(wpi.platforms.desktop)
+}
+
+jar {
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    manifest GradleRIOPlugin.javaManifest(ROBOT_MAIN_CLASS)
+}
